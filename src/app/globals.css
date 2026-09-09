@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --background: #030712;
+  --foreground: #f8fafc;
+  --accent: #00f5d4;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Timeline scrubber: invisible track, glowing thumb over the custom rail. */
+.timeline-range::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
+.timeline-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.75);
+  cursor: grab;
+  margin-top: 0;
+}
+
+.timeline-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+.timeline-range::-moz-range-track {
+  height: 100%;
+  background: transparent;
+}
+
+.timeline-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 12px rgba(0, 245, 212, 0.75);
+  cursor: grab;
+}
+
+.timeline-range:focus-visible::-webkit-slider-thumb,
+.timeline-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
