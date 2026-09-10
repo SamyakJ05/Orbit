@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useCallback, useMemo } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { GLOBE_RADIUS } from '@/lib/geo-utils';
@@ -92,9 +91,14 @@ function Graticule() {
   );
 }
 
+/**
+ * Renders only the globe's own geometry (ocean/land sphere, graticule,
+ * atmosphere). Deliberately does NOT own any rotation — this must live in
+ * the same rotating group as FlightArcs (see GlobeCanvas), or the globe
+ * spins out from under the arcs since they're computed independently in
+ * world-space lat/lng coordinates.
+ */
 export default function EarthSphere() {
-  const groupRef = useRef<THREE.Group>(null);
-
   // drei's useTexture runs onLoad in a layout effect, which is the sanctioned
   // place to configure a loaded texture (colorSpace, anisotropy) rather than
   // mutating it during render.
@@ -113,15 +117,8 @@ export default function EarthSphere() {
     onTexturesLoaded
   );
 
-  // Slow idle spin; delta-based so it stays frame-rate independent.
-  useFrame((_state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.015;
-    }
-  });
-
   return (
-    <group ref={groupRef}>
+    <>
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS, 96, 96]} />
         <meshStandardMaterial
@@ -135,6 +132,6 @@ export default function EarthSphere() {
       </mesh>
       <Graticule />
       <Atmosphere />
-    </group>
+    </>
   );
 }

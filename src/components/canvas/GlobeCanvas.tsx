@@ -1,13 +1,33 @@
 'use client';
 
-import { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { AdaptiveDpr, OrbitControls, Stars } from '@react-three/drei';
+import type { Group } from 'three';
 import EarthSphere from './EarthSphere';
 import FlightArcs from './FlightArcs';
 import { useTravelStore } from '@/stores/useTravelStore';
 
 const SPACE_BACKGROUND = '#030712';
+
+/**
+ * Globe and flight arcs must share one rotation, since arcs are computed
+ * directly in world-space lat/lng coordinates rather than as children
+ * parented to the spinning globe mesh — spinning the globe alone (as an
+ * earlier version did) left arcs behind, silently drifting them off their
+ * real-world coastlines the longer the page stayed open.
+ */
+function RotatingWorld({ children }: { children: React.ReactNode }) {
+  const groupRef = useRef<Group>(null);
+
+  useFrame((_state, delta) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y += delta * 0.015;
+    }
+  });
+
+  return <group ref={groupRef}>{children}</group>;
+}
 
 export default function GlobeCanvas() {
   const setSelectedSegmentId = useTravelStore((state) => state.setSelectedSegmentId);
@@ -32,8 +52,10 @@ export default function GlobeCanvas() {
 
       <Suspense fallback={null}>
         <Stars radius={60} depth={40} count={3500} factor={3} saturation={0} fade speed={0.4} />
-        <EarthSphere />
-        <FlightArcs />
+        <RotatingWorld>
+          <EarthSphere />
+          <FlightArcs />
+        </RotatingWorld>
       </Suspense>
 
       <OrbitControls
