@@ -17,8 +17,19 @@ const AIRPORTS = airportsData as AirportRecord[];
  * public domain). Matches on IATA code, airport name, or city.
  */
 export function searchAirports(query: string, limit = 8): LocationNode[] {
-  const q = query.trim().toLowerCase();
+  const trimmed = query.trim();
+  const q = trimmed.toLowerCase();
   if (q.length < 2) return [];
+
+  // IATA codes are conventionally typed in caps ("JFK"), so treat an
+  // all-caps 3-letter query as a deliberate code lookup. Anything else
+  // (including a lowercase 3-letter query) is almost always someone typing
+  // a city name, which matters because plenty of common city names collide
+  // with unrelated codes — e.g. "Goa" (India) vs the IATA code GOA (Genoa,
+  // Italy). Without this, an exact-code match would always outrank the
+  // obviously-intended city, and silently place a trip on the wrong
+  // continent instead of erroring.
+  const looksLikeIntentionalCode = trimmed.length === 3 && trimmed === trimmed.toUpperCase();
 
   const scored: { node: LocationNode; score: number }[] = [];
 
@@ -28,10 +39,15 @@ export function searchAirports(query: string, limit = 8): LocationNode[] {
     const name = airport.name.toLowerCase();
 
     let score = -1;
-    if (code === q) score = 100;
-    else if (code.startsWith(q)) score = 90;
-    else if (city.startsWith(q)) score = 70;
-    else if (name.startsWith(q)) score = 60;
+    if (code === q && looksLikeIntentionalCode) score = 100;
+    else if (city.startsWith(q)) score = 90;
+    // An airport's full name often carries the region travelers actually
+    // search for even when the municipality field doesn't (e.g. "Goa
+    // Dabolim International Airport" in the city of "Vasco da Gama") — that
+    // deserves to beat a same-string coincidental IATA code.
+    else if (name.startsWith(q)) score = 85;
+    else if (code === q) score = 80;
+    else if (code.startsWith(q)) score = 70;
     else if (city.includes(q)) score = 40;
     else if (name.includes(q)) score = 30;
 

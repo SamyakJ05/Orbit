@@ -2,10 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, Globe2, Plane, Route } from 'lucide-react';
+import { Clock, Globe2, Loader2, Plane, Route, Trash2 } from 'lucide-react';
 import { computeTravelStats } from '@/lib/travel-stats';
 import { countryCodeToFlag, formatNumber } from '@/lib/utils';
-import { selectFilteredSegments, useTravelStore } from '@/stores/useTravelStore';
+import {
+  selectFilteredSegments,
+  useTravelStore,
+  type TravelSegment,
+} from '@/stores/useTravelStore';
 import { MODE_COLORS } from '@/components/canvas/FlightArcs';
 
 const PANEL =
@@ -136,63 +140,123 @@ export default function StatsHUD() {
         </div>
       </motion.section>
 
-      {selected ? (
-        <motion.section
-          key={selected.id}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.28, ease: 'easeOut' }}
-          className={`${PANEL} p-5`}
-        >
-          <div className="flex items-center gap-2">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: MODE_COLORS[selected.mode] }}
-            />
-            <h3 className="text-[11px] uppercase tracking-[0.14em] text-white/45">
-              {selected.mode}
-            </h3>
-          </div>
-          <p className="mt-2 text-lg font-semibold">
-            {selected.origin.code ?? selected.origin.city}
-            <span className="mx-2 text-white/35">→</span>
-            {selected.destination.code ?? selected.destination.city}
-          </p>
-          <p className="text-xs text-white/50">
-            {selected.origin.city} to {selected.destination.city}
-          </p>
-          <dl className="mt-3 grid grid-cols-2 gap-y-2 text-xs">
-            <dt className="text-white/45">Date</dt>
-            <dd className="text-right tabular-nums">
-              {new Date(selected.departureTime).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                timeZone: 'UTC',
-              })}
-            </dd>
-            <dt className="text-white/45">Distance</dt>
-            <dd className="text-right tabular-nums">
-              {formatNumber(selected.distanceKm)} km
-            </dd>
-            <dt className="text-white/45">Duration</dt>
-            <dd className="text-right tabular-nums">
-              {Math.floor(selected.durationMinutes / 60)}h {selected.durationMinutes % 60}m
-            </dd>
-            {selected.carrierOrFlightNo ? (
-              <>
-                <dt className="text-white/45">Carrier</dt>
-                <dd className="text-right">{selected.carrierOrFlightNo}</dd>
-              </>
-            ) : null}
-            {selected.coTravelers?.length ? (
-              <>
-                <dt className="text-white/45">With</dt>
-                <dd className="text-right">{selected.coTravelers.join(', ')}</dd>
-              </>
-            ) : null}
-          </dl>
-        </motion.section>
-      ) : null}
+      {selected ? <SelectedTripCard key={selected.id} segment={selected} /> : null}
     </div>
+  );
+}
+
+function SelectedTripCard({ segment }: { segment: TravelSegment }) {
+  const setSelectedSegmentId = useTravelStore((state) => state.setSelectedSegmentId);
+  const deleteSegment = useTravelStore((state) => state.deleteSegment);
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    const { error } = await deleteSegment(segment.id);
+    if (error) {
+      setIsDeleting(false);
+      setDeleteError(error);
+      return;
+    }
+    setSelectedSegmentId(null);
+  };
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      className={`${PANEL} p-5`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: MODE_COLORS[segment.mode] }}
+          />
+          <h3 className="text-[11px] uppercase tracking-[0.14em] text-white/45">
+            {segment.mode}
+          </h3>
+        </div>
+
+        {isConfirmingDelete ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex items-center gap-1 rounded-lg bg-red-500/20 px-2 py-1 text-[11px] font-medium text-red-300 transition hover:bg-red-500/30 disabled:opacity-60"
+            >
+              {isDeleting ? <Loader2 size={11} className="animate-spin" /> : null}
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsConfirmingDelete(false)}
+              disabled={isDeleting}
+              className="rounded-lg px-2 py-1 text-[11px] font-medium text-white/50 transition hover:bg-white/10 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsConfirmingDelete(true)}
+            aria-label="Delete trip"
+            className="rounded-lg p-1.5 text-white/35 transition hover:bg-red-500/10 hover:text-red-300"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+      </div>
+
+      <p className="mt-2 text-lg font-semibold">
+        {segment.origin.code ?? segment.origin.city}
+        <span className="mx-2 text-white/35">→</span>
+        {segment.destination.code ?? segment.destination.city}
+      </p>
+      <p className="text-xs text-white/50">
+        {segment.origin.city} to {segment.destination.city}
+      </p>
+
+      {deleteError ? (
+        <p className="mt-2 rounded-lg bg-red-500/10 px-2.5 py-1.5 text-xs text-red-300">
+          {deleteError}
+        </p>
+      ) : null}
+
+      <dl className="mt-3 grid grid-cols-2 gap-y-2 text-xs">
+        <dt className="text-white/45">Date</dt>
+        <dd className="text-right tabular-nums">
+          {new Date(segment.departureTime).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC',
+          })}
+        </dd>
+        <dt className="text-white/45">Distance</dt>
+        <dd className="text-right tabular-nums">{formatNumber(segment.distanceKm)} km</dd>
+        <dt className="text-white/45">Duration</dt>
+        <dd className="text-right tabular-nums">
+          {Math.floor(segment.durationMinutes / 60)}h {segment.durationMinutes % 60}m
+        </dd>
+        {segment.carrierOrFlightNo ? (
+          <>
+            <dt className="text-white/45">Carrier</dt>
+            <dd className="text-right">{segment.carrierOrFlightNo}</dd>
+          </>
+        ) : null}
+        {segment.coTravelers?.length ? (
+          <>
+            <dt className="text-white/45">With</dt>
+            <dd className="text-right">{segment.coTravelers.join(', ')}</dd>
+          </>
+        ) : null}
+      </dl>
+    </motion.section>
   );
 }
