@@ -1,0 +1,11 @@
+# Netlify auto-detects Next.js and applies the official @netlify/plugin-nextjs
+# runtime (handles SSR, middleware, and image optimization) without needing
+# it listed here explicitly, but the build command/publish dir are pinned
+# for clarity.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
