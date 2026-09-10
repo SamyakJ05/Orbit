@@ -49,14 +49,37 @@ npm run dev
 Open http://localhost:3000, sign up with any email/password, and add your
 first trip.
 
-By default, Supabase requires confirming a sign-up via email before signing
-in (verified: a real sign-up against a fresh project returns the "check your
-inbox" screen rather than an active session). For local testing without
-setting up an email provider, you can turn this off in *Authentication >
-Providers > Email > Confirm email* — do this by hand in the dashboard, not
-via `supabase config push`, which pushes your *entire* local `config.toml`
-and can silently overwrite other hosted settings you didn't mean to touch.
-Not recommended to turn off once real users are on the app.
+### Email delivery (SMTP)
+
+Supabase requires confirming a sign-up via email before signing in. Its
+built-in mailer is fine for a couple of test signups but rate-limits hard
+(as low as ~2 emails/hour on the free tier) — expect `email rate limit
+exceeded` the moment you're testing seriously.
+
+This project is configured to send auth email through
+[Resend](https://resend.com) instead, from a verified subdomain
+(`mail.samyak.space`). The config lives in `supabase/config.toml` under
+`[auth.email.smtp]`; the password field references `env(RESEND_SMTP_PASSWORD)`
+rather than a literal key. To push a change to this section (or set it up
+fresh for a different project):
+
+```bash
+export RESEND_SMTP_PASSWORD=<your Resend API key>
+supabase config diff --project-ref <ref>   # review every line before pushing
+supabase config push --project-ref <ref>
+```
+
+**Always run `config diff` first and read it.** `config push` sends your
+*entire* local `config.toml`, and `supabase init`'s template ships with
+several settings (MFA, Twilio, storage analytics, pooler sizes, OTP length...)
+that default differently from a real project's live settings — a blind push
+can silently change things you never meant to touch. The safe pattern used
+here: diff, fix every unintended mismatch in the file so it matches the
+remote value, diff again until only your intended change remains, then push.
+
+To disable email confirmation entirely for local testing (not recommended
+once real users are on the app), toggle it by hand in *Authentication >
+Providers > Email > Confirm email* rather than via config push.
 
 Other scripts:
 
